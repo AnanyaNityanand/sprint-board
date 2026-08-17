@@ -81,8 +81,8 @@ function Landing() {
       </header>
 
       <main>
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-          <div className="max-w-2xl">
+        <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1.05fr_1fr]">
+          <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-primary">
               Project management, simplified
             </p>
@@ -121,7 +121,28 @@ function Landing() {
               )}
             </ul>
           </div>
+
+          <div
+            aria-hidden="true"
+            className="grid grid-cols-2 gap-3 rounded-xl border bg-card p-4 shadow-panel sm:grid-cols-4 lg:grid-cols-2"
+          >
+            {boardPreview.map((column) => (
+              <div key={column.title} className="rounded-lg bg-secondary/60 p-3">
+                <p className="mb-2 text-xs font-semibold">{column.title}</p>
+                <div className="space-y-2">
+                  {column.cards.map((card) => (
+                    <div key={card} className="rounded-md border bg-card px-2.5 py-2">
+                      <p className="text-xs font-medium leading-snug">{card}</p>
+                      <div className="mt-2 h-1.5 w-10 rounded-full bg-accent" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
+
+
 
         <section className="border-t bg-card py-16 sm:py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
