@@ -25,33 +25,8 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-const features = [
-  {
-    icon: KanbanSquare,
-    title: "Kanban board built in",
-    description:
-      "Four focused columns — Todo, In Progress, Review and Done — with priority, assignee and due dates on every card.",
-  },
-  {
-    icon: Users,
-    title: "Projects for your team",
-    description:
-      "Every project has an owner and a member list, so work stays organised as your team grows.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Private by default",
-    description:
-      "Projects and tasks are only visible to their members. Nothing leaks between teams.",
-  },
-];
 
-const boardPreview = [
-  { title: "Todo", cards: ["Draft sprint goals", "Audit onboarding copy"] },
-  { title: "In Progress", cards: ["Build project settings"] },
-  { title: "Review", cards: ["Board empty states"] },
-  { title: "Done", cards: ["Set up design system", "Auth flows"] },
-];
+
 
 
 function Landing() {
