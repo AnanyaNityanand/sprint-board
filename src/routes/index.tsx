@@ -46,6 +46,14 @@ const features = [
   },
 ];
 
+const boardPreview = [
+  { title: "Todo", cards: ["Draft sprint goals", "Audit onboarding copy"] },
+  { title: "In Progress", cards: ["Build project settings"] },
+  { title: "Review", cards: ["Board empty states"] },
+  { title: "Done", cards: ["Set up design system", "Auth flows"] },
+];
+
+
 function Landing() {
   const { isAuthenticated } = useAuth();
 
