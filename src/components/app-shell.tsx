@@ -19,8 +19,8 @@ export function AppShell({
 }: {
   children: ReactNode;
   title: string;
-  description?: string;
-  actions?: ReactNode;
+  description?: string | undefined;
+  actions?: ReactNode | undefined;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
