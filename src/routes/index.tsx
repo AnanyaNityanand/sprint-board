@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CheckCircle2, KanbanSquare, ShieldCheck, Users } from "lucide-react";
+import { CheckCircle2, KanbanSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { boardPreview, features } from "@/lib/landing-content";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
