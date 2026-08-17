@@ -95,10 +95,15 @@ function Landing() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
-                <Link to={isAuthenticated ? "/dashboard" : "/auth"} search={isAuthenticated ? undefined : { mode: "signup" }}>
-                  Get started free
-                </Link>
+                {isAuthenticated ? (
+                  <Link to="/dashboard">Go to your dashboard</Link>
+                ) : (
+                  <Link to="/auth" search={{ mode: "signup" }}>
+                    Get started free
+                  </Link>
+                )}
               </Button>
+
               <Button asChild variant="outline" size="lg">
                 <Link to="/auth" search={{ mode: "signin" }}>
                   I already have an account
