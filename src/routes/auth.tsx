@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { KanbanSquare } from "lucide-react";
+import { SquareKanban as KanbanSquare } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -41,6 +41,24 @@ function AuthPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"signin" | "signup">(mode ?? "signin");
   const [checkEmail, setCheckEmail] = useState(false);
+  // The Lovable OAuth broker endpoint is only served by the hosted runtime.
+  // Probe it so we only offer Google sign-in where it's actually configured.
+  const [googleReady, setGoogleReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/~oauth/initiate", { method: "HEAD" })
+      .then((res) => {
+        if (cancelled) return;
+        setGoogleReady(res.status !== 404);
+      })
+      .catch(() => {
+        if (!cancelled) setGoogleReady(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -87,12 +105,16 @@ function AuthPage() {
               </div>
             ) : (
               <>
-                <GoogleButton />
-                <div className="flex items-center gap-3">
-                  <Separator className="flex-1" />
-                  <span className="text-xs uppercase text-muted-foreground">or</span>
-                  <Separator className="flex-1" />
-                </div>
+                {googleReady && (
+                  <>
+                    <GoogleButton />
+                    <div className="flex items-center gap-3">
+                      <Separator className="flex-1" />
+                      <span className="text-xs uppercase text-muted-foreground">or</span>
+                      <Separator className="flex-1" />
+                    </div>
+                  </>
+                )}
                 {tab === "signin" ? (
                   <SignInForm onSuccess={() => navigate({ to: "/dashboard", replace: true })} />
                 ) : (
