@@ -23,18 +23,27 @@ function formatDate(value: string) {
   }
 }
 
+type DragHandleProps = {
+  dragHandleRef?: (el: HTMLElement | null) => void;
+  dragListeners?: Record<string, (...args: never[]) => void>;
+};
+
 export function TaskCard({
   task,
   members,
   onUpdate,
   onDelete,
   pending,
+  dragHandleRef,
+  dragListeners,
 }: {
   task: Task;
   members: ProjectMember[];
   onUpdate: (values: TaskValues) => Promise<void>;
   onDelete: () => void;
   pending?: boolean | undefined;
+  dragHandleRef?: (el: HTMLElement | null) => void;
+  dragListeners?: Record<string, (...args: never[]) => void>;
 }) {
   const assignee = members.find((member) => member.user_id === task.assignee_id);
 
@@ -44,36 +53,38 @@ export function TaskCard({
       data-task-status={task.status}
       className="rounded-lg border bg-card p-3 shadow-card"
     >
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-semibold leading-snug">{task.title}</h3>
-        <Badge variant={priorityVariant[task.priority]} className="shrink-0 capitalize">
-          {task.priority}
-        </Badge>
+      <div ref={dragHandleRef} {...dragListeners} className="cursor-grab active:cursor-grabbing">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-sm font-semibold leading-snug">{task.title}</h3>
+          <Badge variant={priorityVariant[task.priority]} className="shrink-0 capitalize">
+            {task.priority}
+          </Badge>
+        </div>
+
+        {task.description && (
+          <p className="mt-1.5 line-clamp-3 text-sm text-muted-foreground">{task.description}</p>
+        )}
+
+        <dl className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <User className="size-3.5" aria-hidden="true" />
+            <dt className="sr-only">Assignee</dt>
+            <dd>{assignee?.profile?.full_name || assignee?.profile?.email || "Unassigned"}</dd>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <CalendarDays className="size-3.5" aria-hidden="true" />
+            <dt className="sr-only">Due date</dt>
+            <dd>{task.due_date ? formatDate(task.due_date) : "No due date"}</dd>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Clock className="size-3.5" aria-hidden="true" />
+            <dt className="sr-only">Created</dt>
+            <dd>Created {formatDate(task.created_at)}</dd>
+          </div>
+        </dl>
       </div>
 
-      {task.description && (
-        <p className="mt-1.5 line-clamp-3 text-sm text-muted-foreground">{task.description}</p>
-      )}
-
-      <dl className="mt-3 space-y-1.5 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <User className="size-3.5" aria-hidden="true" />
-          <dt className="sr-only">Assignee</dt>
-          <dd>{assignee?.profile?.full_name || assignee?.profile?.email || "Unassigned"}</dd>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <CalendarDays className="size-3.5" aria-hidden="true" />
-          <dt className="sr-only">Due date</dt>
-          <dd>{task.due_date ? formatDate(task.due_date) : "No due date"}</dd>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Clock className="size-3.5" aria-hidden="true" />
-          <dt className="sr-only">Created</dt>
-          <dd>Created {formatDate(task.created_at)}</dd>
-        </div>
-      </dl>
-
-      <div className="mt-3 flex justify-end gap-1">
+      <div className="mt-3 flex justify-end gap-1" onPointerDown={(e) => e.stopPropagation()}>
         <TaskDialog
           trigger={
             <Button variant="ghost" size="icon" aria-label={`Edit ${task.title}`}>

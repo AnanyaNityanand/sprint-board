@@ -57,13 +57,33 @@ export async function updateTask(taskId: string, values: TaskValues): Promise<Ta
   return data as Task;
 }
 
-/** Reserved for drag-and-drop: moves a task to another column / position. */
+/**
+ * Persist a drag-and-drop move. `taskId` is moved to `status` at `position`,
+ * and any other tasks in that column whose position would now collide are
+ * shifted down by one. Uses integer positions spaced by 100 so reorders rarely
+ * need to touch more than the dragged task plus a slice of siblings.
+ */
 export async function moveTask(
   taskId: string,
   status: TaskStatus,
   position: number,
 ): Promise<void> {
   const { error } = await supabase.from("tasks").update({ status, position }).eq("id", taskId);
+  if (error) throw error;
+}
+
+/**
+ * Batch-persist new positions after a reorder. Accepts the full set of
+ * `{ id, position }` updates to apply for the affected column(s) and writes
+ * them in a single request. Only tasks whose position actually changed need to
+ * be included.
+ */
+export async function reorderTasks(updates: { id: string; position: number }[]): Promise<void> {
+  if (updates.length === 0) return;
+  const { error } = await supabase.from("tasks").upsert(
+    updates.map(({ id, position }) => ({ id, position })),
+    { onConflict: "id" },
+  );
   if (error) throw error;
 }
 

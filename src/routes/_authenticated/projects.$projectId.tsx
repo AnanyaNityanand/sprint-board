@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { deleteProject, updateProject } from "@/lib/api/projects";
-import { createTask, deleteTask, updateTask } from "@/lib/api/tasks";
+import { createTask, deleteTask, moveTask, reorderTasks, updateTask } from "@/lib/api/tasks";
 import { projectMembersQuery, projectQuery, tasksQuery } from "@/lib/queries";
 import type { ProjectValues, TaskValues } from "@/lib/schemas";
+import type { Task } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/projects/$projectId")({
   head: () => ({
@@ -94,6 +95,27 @@ function ProjectPage() {
       invalidateTasks();
     },
     onError: (error: Error) => toast.error(error.message || "Could not delete task"),
+  });
+
+  const moveTaskMutation = useMutation({
+    mutationFn: async (intent: {
+      taskId: string;
+      status: Task["status"];
+      position: number;
+      siblingUpdates: { id: string; position: number }[];
+    }) => {
+      await moveTask(intent.taskId, intent.status, intent.position);
+      if (intent.siblingUpdates.length > 0) {
+        await reorderTasks(intent.siblingUpdates);
+      }
+    },
+    onSuccess: () => {
+      invalidateTasks();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Could not move task. Reverting.");
+      queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+    },
   });
 
   if (project.isPending) {
@@ -208,6 +230,22 @@ function ProjectPage() {
                 await saveTask.mutateAsync({ taskId, values });
               }}
               onDelete={(taskId) => removeTask.mutate(taskId)}
+              onMove={(intent) => {
+                const queryKey = ["tasks", projectId];
+                const previous = queryClient.getQueryData<Task[]>(queryKey);
+                if (previous) {
+                  const next = previous.map((task) => {
+                    if (task.id === intent.taskId) {
+                      return { ...task, status: intent.status, position: intent.position };
+                    }
+                    const sibling = intent.siblingUpdates.find((s) => s.id === task.id);
+                    if (sibling) return { ...task, position: sibling.position };
+                    return task;
+                  });
+                  queryClient.setQueryData<Task[]>(queryKey, next);
+                }
+                moveTaskMutation.mutate(intent);
+              }}
             />
           )}
         </section>
