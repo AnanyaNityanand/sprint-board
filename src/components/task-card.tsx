@@ -1,6 +1,13 @@
-import { CalendarDays, Clock, Pencil, Trash2, User } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  MessageCircle,
+  Pencil,
+  Trash2,
+  User,
+} from "lucide-react";
 import { format, parseISO } from "date-fns";
-
+import { TaskCommentsDialog } from "@/components/task-comments-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -85,6 +92,18 @@ export function TaskCard({
       </div>
 
       <div className="mt-3 flex justify-end gap-1" onPointerDown={(e) => e.stopPropagation()}>
+        <TaskCommentsDialog
+  task={task}
+  trigger={
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label={`Comments for ${task.title}`}
+    >
+      <MessageCircle className="size-4" />
+    </Button>
+  }
+/>
         <TaskDialog
           trigger={
             <Button variant="ghost" size="icon" aria-label={`Edit ${task.title}`}>

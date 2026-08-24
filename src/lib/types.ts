@@ -46,6 +46,26 @@ export interface Task {
   updated_at: string;
 }
 
+export interface TaskComment {
+  id: string;
+  task_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  project_id: string | null;
+  task_id: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
 export const TASK_STATUSES: { value: TaskStatus; label: string }[] = [
   { value: "todo", label: "Todo" },
   { value: "in_progress", label: "In Progress" },

@@ -179,6 +179,103 @@ export type Database = {
           },
         ]
       }
+            task_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+  Row: {
+    created_at: string
+    id: string
+    is_read: boolean
+    message: string | null
+    project_id: string | null
+    task_id: string | null
+    title: string
+    type: string
+    user_id: string
+  }
+  Insert: {
+    created_at?: string
+    id?: string
+    is_read?: boolean
+    message?: string | null
+    project_id?: string | null
+    task_id?: string | null
+    title: string
+    type: string
+    user_id: string
+  }
+  Update: {
+    created_at?: string
+    id?: string
+    is_read?: boolean
+    message?: string | null
+    project_id?: string | null
+    task_id?: string | null
+    title?: string
+    type?: string
+    user_id?: string
+  }
+  Relationships: [
+    {
+      foreignKeyName: "notifications_project_id_fkey"
+      columns: ["project_id"]
+      isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },
+    {
+      foreignKeyName: "notifications_task_id_fkey"
+      columns: ["task_id"]
+      isOneToOne: false
+      referencedRelation: "tasks"
+      referencedColumns: ["id"]
+    },
+    {
+      foreignKeyName: "notifications_user_id_fkey"
+      columns: ["user_id"]
+      isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },
+  ]
+}
     }
     Views: {
       [_ in never]: never
@@ -195,6 +292,13 @@ export type Database = {
       shares_project_with: {
         Args: { _other_user: string; _user_id: string }
         Returns: boolean
+      }
+      add_project_member_by_email: {
+        Args: {
+        _project_id: string
+        _email: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

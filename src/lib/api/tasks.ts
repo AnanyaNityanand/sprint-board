@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { createNotification } from "@/lib/api/notifications";
 import type { Task, TaskStatus } from "@/lib/types";
 import type { TaskValues } from "@/lib/schemas";
 
@@ -35,10 +36,37 @@ export async function createTask(
     .single();
 
   if (error) throw error;
-  return data as Task;
+
+  const task = data as Task;
+
+  // Create a notification if the task is assigned to someone else.
+  if (task.assignee_id && task.assignee_id !== createdBy) {
+    await createNotification({
+      userId: task.assignee_id,
+      type: "task_assigned",
+      title: "New task assigned",
+      message: `You were assigned to "${task.title}".`,
+      projectId: task.project_id,
+      taskId: task.id,
+    });
+  }
+
+  return task;
 }
 
-export async function updateTask(taskId: string, values: TaskValues): Promise<Task> {
+export async function updateTask(
+  taskId: string,
+  values: TaskValues,
+): Promise<Task> {
+  // Get the current task first so we can detect an assignee change.
+  const { data: existingTask, error: existingError } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("id", taskId)
+    .single();
+
+  if (existingError) throw existingError;
+
   const { data, error } = await supabase
     .from("tasks")
     .update({
@@ -54,7 +82,25 @@ export async function updateTask(taskId: string, values: TaskValues): Promise<Ta
     .single();
 
   if (error) throw error;
-  return data as Task;
+
+  const updatedTask = data as Task;
+
+  // Notify only when the assignee actually changed.
+  if (
+    updatedTask.assignee_id &&
+    updatedTask.assignee_id !== existingTask.assignee_id
+  ) {
+    await createNotification({
+      userId: updatedTask.assignee_id,
+      type: "task_assigned",
+      title: "Task assigned to you",
+      message: `You were assigned to "${updatedTask.title}".`,
+      projectId: updatedTask.project_id,
+      taskId: updatedTask.id,
+    });
+  }
+
+  return updatedTask;
 }
 
 /**
@@ -78,12 +124,22 @@ export async function moveTask(
  * them in a single request. Only tasks whose position actually changed need to
  * be included.
  */
-export async function reorderTasks(updates: { id: string; position: number }[]): Promise<void> {
+export async function reorderTasks(
+  updates: { id: string; position: number }[],
+): Promise<void> {
   if (updates.length === 0) return;
-  const { error } = await supabase.from("tasks").upsert(
-    updates.map(({ id, position }) => ({ id, position })),
-    { onConflict: "id" },
+
+  const results = await Promise.all(
+    updates.map(({ id, position }) =>
+      supabase
+        .from("tasks")
+        .update({ position })
+        .eq("id", id),
+    ),
   );
+
+  const error = results.find((result) => result.error)?.error;
+
   if (error) throw error;
 }
 

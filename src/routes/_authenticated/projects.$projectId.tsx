@@ -1,3 +1,5 @@
+import { useEffect , useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Trash2 } from "lucide-react";
@@ -7,13 +9,19 @@ import { AppShell } from "@/components/app-shell";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ErrorState } from "@/components/error-state";
 import { KanbanBoard } from "@/components/kanban-board";
+import { MemberDialog } from "@/components/member-dialog";
 import { ProjectDialog } from "@/components/project-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
-import { deleteProject, updateProject } from "@/lib/api/projects";
+import {
+  addProjectMemberByEmail,
+  deleteProject,
+  updateProject,
+} from "@/lib/api/projects";
 import { createTask, deleteTask, moveTask, reorderTasks, updateTask } from "@/lib/api/tasks";
+import { createNotification } from "@/lib/api/notifications";
 import { projectMembersQuery, projectQuery, tasksQuery } from "@/lib/queries";
 import type { ProjectValues, TaskValues } from "@/lib/schemas";
 import type { Task } from "@/lib/types";
@@ -36,10 +44,110 @@ function ProjectPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-
+  const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const project = useQuery(projectQuery(projectId));
   const members = useQuery(projectMembersQuery(projectId));
   const tasks = useQuery(tasksQuery(projectId));
+  useEffect(() => {
+  const channel = supabase
+    .channel(`project-tasks-${projectId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "tasks",
+        filter: `project_id=eq.${projectId}`,
+      },
+      (payload) => {
+  queryClient.setQueryData<Task[]>(["tasks", projectId], (oldTasks = []) => {
+    if (payload.eventType === "INSERT") {
+  const newTask = payload.new as Task;
+
+  const alreadyExists = oldTasks.some(
+    (task) => task.id === newTask.id,
+  );
+
+  if (alreadyExists) {
+    return oldTasks;
+  }
+
+  return [...oldTasks, newTask];
+}
+
+    if (payload.eventType === "UPDATE") {
+      return oldTasks.map((task) =>
+        task.id === payload.new["id"] ? (payload.new as Task) : task,
+      );
+    }
+
+    if (payload.eventType === "DELETE") {
+      return oldTasks.filter((task) => task.id !== payload.old["id"]);
+    }
+
+    return oldTasks;
+  });
+
+  queryClient.invalidateQueries({
+    queryKey: ["projects"],
+  });
+},
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [projectId, queryClient]);
+ useEffect(() => {
+  if (!user) return;
+
+  const channel = supabase.channel(`project-presence-${projectId}`, {
+    config: {
+      presence: {
+        key: user.id,
+      },
+    },
+  });
+
+  channel.on("presence", { event: "sync" }, () => {
+    const state = channel.presenceState();
+
+    const ids = Object.values(state)
+      .flat()
+      .map(
+        (presence) =>
+          (presence as unknown as { user_id: string }).user_id,
+      );
+
+    setOnlineUserIds([...new Set(ids)]);
+  });
+
+  channel.subscribe(async (status) => {
+    if (status === "SUBSCRIBED") {
+      await channel.track({
+        user_id: user.id,
+      });
+    }
+  });
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [projectId, user]);
+  const addMember = useMutation({
+  mutationFn: (email: string) =>
+    addProjectMemberByEmail(projectId, email),
+  onSuccess: () => {
+    toast.success("Member added");
+    queryClient.invalidateQueries({
+      queryKey: ["project-members", projectId],
+    });
+  },
+  onError: (error: Error) => {
+    toast.error(error.message || "Could not add member");
+  },
+});
 
   const invalidateTasks = () => {
     queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
@@ -67,26 +175,135 @@ function ProjectPage() {
   });
 
   const addTask = useMutation({
-    mutationFn: (values: TaskValues) => {
-      if (!user) throw new Error("You need to be signed in.");
-      return createTask(projectId, values, user.id);
-    },
-    onSuccess: () => {
-      toast.success("Task created");
-      invalidateTasks();
-    },
-    onError: (error: Error) => toast.error(error.message || "Could not create task"),
-  });
+  mutationFn: async (values: TaskValues) => {
+    if (!user) throw new Error("You need to be signed in.");
 
+    const newTask = await createTask(projectId, values, user.id);
+
+    console.log("1. TASK CREATED:", newTask);
+
+    console.log("2. BEFORE NOTIFICATION");
+
+    if (
+  newTask.assignee_id &&
+  newTask.assignee_id !== user.id
+) {
+  try {
+    const notification = await createNotification({
+      userId: newTask.assignee_id,
+      type: "task_assigned",
+      title: "New task assigned",
+      message: `You were assigned to "${newTask.title}"`,
+      projectId,
+      taskId: newTask.id,
+    });
+
+    console.log("NOTIFICATION SUCCESS:", notification);
+  } catch (error) {
+    console.error("NOTIFICATION FAILED:", error);
+    throw error;
+  }
+}
+
+    console.log("4. AFTER NOTIFICATION");
+
+    return newTask;
+  },
+
+  onSuccess: () => {
+    toast.success("Task created");
+    invalidateTasks();
+  },
+
+  onError: (error: Error) => {
+    console.error("ERROR:", error);
+    toast.error(error.message || "Could not create task");
+  },
+});
+
+  
   const saveTask = useMutation({
-    mutationFn: ({ taskId, values }: { taskId: string; values: TaskValues }) =>
-      updateTask(taskId, values),
-    onSuccess: () => {
-      toast.success("Task updated");
-      invalidateTasks();
-    },
-    onError: (error: Error) => toast.error(error.message || "Could not update task"),
-  });
+  mutationFn: async ({
+    taskId,
+    values,
+  }: {
+    taskId: string;
+    values: TaskValues;
+  }) => {
+    console.log("✏️ UPDATING TASK:", {
+      taskId,
+      values,
+      currentUser: user?.id,
+    });
+
+    // Get the task before updating it
+    const existingTask = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("id", taskId)
+      .single();
+
+    if (existingTask.error) {
+      throw existingTask.error;
+    }
+
+    const previousAssigneeId = existingTask.data.assignee_id;
+
+    console.log("👤 PREVIOUS ASSIGNEE:", previousAssigneeId);
+
+    // Update task
+    const updatedTask = await updateTask(taskId, values);
+
+    console.log("✅ TASK UPDATED:", updatedTask);
+    console.log("👤 NEW ASSIGNEE:", updatedTask.assignee_id);
+
+    // Only notify when a task is assigned to someone new
+    if (
+      updatedTask.assignee_id &&
+      updatedTask.assignee_id !== previousAssigneeId &&
+      updatedTask.assignee_id !== user?.id
+    ) {
+      console.log(
+        "🔔 CREATING ASSIGNMENT NOTIFICATION FOR:",
+        updatedTask.assignee_id,
+      );
+
+      try {
+        const notification = await createNotification({
+          userId: updatedTask.assignee_id,
+          type: "task_assigned",
+          title: "New task assigned",
+          message: `You were assigned to "${updatedTask.title}"`,
+          projectId,
+          taskId: updatedTask.id,
+        });
+
+        console.log("🔔 NOTIFICATION CREATED:", notification);
+      } catch (error) {
+        console.error("❌ NOTIFICATION CREATION FAILED:", error);
+        throw error;
+      }
+    } else {
+      console.log("ℹ️ NO ASSIGNMENT NOTIFICATION CREATED", {
+        newAssignee: updatedTask.assignee_id,
+        previousAssignee: previousAssigneeId,
+        currentUser: user?.id,
+      });
+    }
+
+    return updatedTask;
+  },
+
+  onSuccess: () => {
+    toast.success("Task updated");
+    invalidateTasks();
+  },
+
+  onError: (error: Error) => {
+    console.error("❌ TASK UPDATE ERROR:", error);
+    toast.error(error.message || "Could not update task");
+  },
+});
 
   const removeTask = useMutation({
     mutationFn: (taskId: string) => deleteTask(taskId),
@@ -187,23 +404,49 @@ function ProjectPage() {
     >
       <div className="space-y-6">
         <section className="rounded-lg border bg-card p-5 shadow-card">
-          <h2 className="text-sm font-semibold">Members</h2>
+  <div className="flex items-center justify-between gap-4">
+    <h2 className="text-sm font-semibold">Members</h2>
+
+    {isOwner && (
+      <MemberDialog
+        pending={addMember.isPending}
+        onSubmit={async (email) => {
+          await addMember.mutateAsync(email);
+        }}
+      />
+    )}
+  </div>
           {members.isPending ? (
             <Skeleton className="mt-3 h-6 w-40" />
           ) : members.isError ? (
             <p className="mt-2 text-sm text-destructive">Could not load members.</p>
           ) : (
             <ul className="mt-3 flex flex-wrap gap-2">
-              {memberList.map((member) => (
-                <li key={member.id}>
-                  <Badge variant="secondary" className="gap-1.5 font-normal">
-                    {member.profile?.full_name || member.profile?.email || "Member"}
-                    {member.role === "owner" && (
-                      <span className="text-xs text-muted-foreground">owner</span>
-                    )}
-                  </Badge>
-                </li>
-              ))}
+              {memberList.map((member) => {
+  const isOnline = onlineUserIds.includes(member.user_id);
+
+  return (
+    <li key={member.id}>
+      <Badge variant="secondary" className="gap-1.5 font-normal">
+        <span
+          className={`size-2 rounded-full ${
+            isOnline ? "bg-green-500" : "bg-muted-foreground/40"
+          }`}
+        />
+
+        {member.profile?.full_name || member.profile?.email || "Member"}
+
+        {member.role === "owner" && (
+          <span className="text-xs text-muted-foreground">owner</span>
+        )}
+
+        <span className="text-xs text-muted-foreground">
+          {isOnline ? "viewing now" : "offline"}
+        </span>
+      </Badge>
+    </li>
+  );
+})}
             </ul>
           )}
         </section>

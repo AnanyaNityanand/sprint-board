@@ -54,6 +54,17 @@ export async function listProjectMembers(projectId: string): Promise<ProjectMemb
   if (error) throw error;
   return (data ?? []) as unknown as ProjectMember[];
 }
+export async function addProjectMemberByEmail(
+  projectId: string,
+  email: string,
+): Promise<void> {
+  const { error } = await supabase.rpc("add_project_member_by_email", {
+    _project_id: projectId,
+    _email: email,
+  });
+
+  if (error) throw error;
+}
 
 export async function createProject(values: ProjectValues, ownerId: string): Promise<Project> {
   const { data, error } = await supabase
@@ -86,3 +97,4 @@ export async function deleteProject(projectId: string): Promise<void> {
   const { error } = await supabase.from("projects").delete().eq("id", projectId);
   if (error) throw error;
 }
+

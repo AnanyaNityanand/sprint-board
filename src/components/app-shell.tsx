@@ -1,13 +1,24 @@
-import { useState, type ReactNode } from "react";
+import {useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { KanbanSquare, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
-
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Bell,
+  KanbanSquare,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import {
+  listNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+} from "@/lib/api/notifications";
 
 const navItems = [{ to: "/dashboard", label: "Dashboard", icon: LayoutDashboard }] as const;
 
@@ -23,10 +34,74 @@ export function AppShell({
   actions?: ReactNode | undefined;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  useEffect(() => {
+  if (!user) return;
 
+  console.log("SETTING UP NOTIFICATION REALTIME FOR:", user.id);
+
+  const channel = supabase
+    .channel(`notifications-${user.id}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+        filter: `user_id=eq.${user.id}`,
+      },
+      (payload) => {
+        console.log("🔥 NEW NOTIFICATION RECEIVED:", payload);
+
+        queryClient.invalidateQueries({
+          queryKey: ["notifications", user.id],
+        });
+      },
+    )
+    .subscribe((status, error) => {
+      console.log("🔔 NOTIFICATION REALTIME STATUS:", status);
+
+      if (error) {
+        console.error("🔴 NOTIFICATION REALTIME ERROR:", error);
+      }
+    });
+
+  return () => {
+    console.log("REMOVING NOTIFICATION CHANNEL");
+    supabase.removeChannel(channel);
+  };
+}, [user?.id, queryClient]);
+  const notificationsQuery = useQuery({
+  queryKey: ["notifications", user?.id],
+  queryFn: () => listNotifications(user!.id),
+  enabled: Boolean(user),
+});
+
+const markOneAsRead = useMutation({
+  mutationFn: markNotificationAsRead,
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["notifications", user?.id],
+    });
+  },
+});
+
+const markAllAsRead = useMutation({
+  mutationFn: () => markAllNotificationsAsRead(user!.id),
+  onSuccess: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["notifications", user?.id],
+    });
+  },
+});
+
+const notifications = notificationsQuery.data ?? [];
+const unreadCount = notifications.filter(
+  (notification) => !notification.is_read,
+).length;
   const displayName =
     (user?.user_metadata?.["full_name"] as string | undefined) || user?.email || "Account";
 
@@ -109,7 +184,86 @@ export function AppShell({
                 <p className="truncate text-sm text-muted-foreground">{description}</p>
               )}
             </div>
-            {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+            <div className="flex shrink-0 items-center gap-2">
+  <div className="relative">
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label="Notifications"
+      onClick={() => setNotificationsOpen((open) => !open)}
+    >
+      <Bell className="size-5" />
+
+      {unreadCount > 0 && (
+        <span className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] text-destructive-foreground">
+          {unreadCount > 9 ? "9+" : unreadCount}
+        </span>
+      )}
+    </Button>
+
+    {notificationsOpen && (
+      <div className="absolute right-0 top-11 z-50 w-80 rounded-lg border bg-card p-3 shadow-lg">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-semibold">Notifications</h3>
+
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => markAllAsRead.mutate()}
+              disabled={markAllAsRead.isPending}
+            >
+              Mark all read
+            </Button>
+          )}
+        </div>
+
+        <div className="max-h-80 space-y-2 overflow-y-auto">
+          {notificationsQuery.isLoading && (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              Loading...
+            </p>
+          )}
+
+          {!notificationsQuery.isLoading && notifications.length === 0 && (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              No notifications yet.
+            </p>
+          )}
+
+          {notifications.map((notification) => (
+            <button
+              key={notification.id}
+              type="button"
+              className={`w-full rounded-md p-3 text-left text-sm transition-colors hover:bg-muted ${
+                !notification.is_read ? "bg-muted/60" : ""
+              }`}
+              onClick={() => {
+                if (!notification.is_read) {
+                  markOneAsRead.mutate(notification.id);
+                }
+              }}
+            >
+              <p className="font-medium">{notification.title}</p>
+
+              {notification.message && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {notification.message}
+                </p>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+
+  {actions && (
+    <div className="flex shrink-0 items-center gap-2">
+      {actions}
+    </div>
+  )}
+</div>
           </div>
         </header>
         <main className={cn("px-4 py-6 sm:px-6 lg:px-8")}>{children}</main>
