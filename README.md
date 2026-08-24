@@ -1,222 +1,177 @@
-# Sprint Board Foundation
+# Sprint Board
 
-Sprint Board — Initial Build
+A real-time collaborative project management application that helps teams organize projects, manage tasks, and collaborate through a Kanban-based workflow.
 
-Build a modern full-stack web application called Sprint Board.
+## Features
 
-Sprint Board is a collaborative project-management application built around a Kanban board. Users should be able to create projects, manage tasks, and collaborate with other members.
+### Project Management
 
-Goal
+* Create, edit, and delete projects
+* Manage project details and members
+* View project progress and task information
+* Role-based project ownership and membership
 
-Create the initial production-quality foundation of the application. The architecture should be clean, modular, scalable, and easy for a developer to understand and extend.
+### Kanban Task Management
 
-Do not try to implement every advanced feature yet. Build the foundation properly so we can add real-time collaboration and other features incrementally.
+* Organize tasks across four workflow stages:
 
-Core Pages
+  * Todo
+  * In Progress
+  * Review
+  * Done
+* Create, edit, and delete tasks
+* Assign task priorities
+* Add descriptions, due dates, and assignees
+* Drag and drop tasks between workflow stages
+* Persist task status changes to the database
 
-Create these pages:
+### Real-Time Collaboration
 
-Landing Page
+* Live presence indicators for project members
+* Real-time updates using Supabase Realtime
+* Collaborative project workspace experience
 
-Product name: Sprint Board
+### Task Comments
 
-Short description explaining the product
+* Add comments to tasks
+* View discussions associated with individual tasks
+* Support collaboration between project members
 
-Clear "Get Started" / "Sign Up" CTA
+### Notifications
 
-Professional SaaS-style design
+* In-app notification system
+* Unread notification count
+* Mark individual notifications as read
+* Mark all notifications as read
+* Real-time notification updates
 
-Responsive on desktop, tablet, and mobile
+### Authentication & Security
 
-Authentication
+* User authentication with Supabase
+* Protected application routes
+* Row Level Security policies for database access
+* User-based access control for projects and related resources
 
-Sign up
+## Tech Stack
 
-Login
+* **Frontend:** React
+* **Language:** TypeScript
+* **Routing:** TanStack Router
+* **Server State Management:** TanStack Query
+* **Backend & Database:** Supabase
+* **Authentication:** Supabase Auth
+* **Real-Time Features:** Supabase Realtime
+* **Drag and Drop:** dnd-kit
+* **Styling & UI:** Tailwind CSS and reusable UI components
+* **Build Tool:** Vite
 
-Logout
+## Project Structure
 
-Appropriate validation and error messages
+```text
+src/
+├── components/          # Reusable UI components
+├── hooks/               # Custom React hooks
+├── integrations/        # Authentication and Supabase integration
+├── lib/
+│   ├── api/             # Database and API operations
+│   └── types.ts         # Shared TypeScript types
+├── routes/              # Application routes
+└── styles.css           # Global styles
 
-Protect authenticated routes
+supabase/
+└── migrations/          # Database schema and migrations
+```
 
-Dashboard
+## Getting Started
 
-Welcome section
+### Prerequisites
 
-List of projects belonging to the current user
+Make sure you have the following installed:
 
-Create Project button
+* Node.js
+* npm
+* A Supabase project
 
-Project cards showing project name, description, member count, and task progress
+### Installation
 
-Project Page
+Clone the repository:
 
-Project name and description
+```bash
+git clone <your-repository-url>
+```
 
-Project members
+Navigate to the project directory:
 
-Kanban board
+```bash
+cd sprint-board
+```
 
-Ability to create tasks
+Install dependencies:
 
-Ability to edit and delete tasks
+```bash
+npm install
+```
 
-Kanban Board
+Create your environment configuration and add your Supabase credentials:
 
-Create four default columns:
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+```
 
-Todo
+Start the development server:
 
-In Progress
-
-Review
-
-Done
-
-Each task card should contain:
-
-Task title
-
-Short description
-
-Priority
-
-Assignee
-
-Due date
-
-Created date
-
-Use a clean Kanban-style interface.
-
-Prepare the task structure so that drag-and-drop task movement can be implemented later.
-
-Projects
-
-Users should be able to:
-
-Create a project
-
-View their projects
-
-Open a project
-
-Edit project details
-
-Delete a project
-
-Each project should have an owner.
-
-Prepare the data model so that project members can be added later.
-
-Data Model
-
-Design a proper relational data model for:
-
-Users
-
-Projects
-
-Project Members
-
-Tasks
-
-Tasks should belong to a project and optionally be assigned to a project member.
-
-Include appropriate relationships, IDs, timestamps, and status/priority fields.
-
-Do not duplicate data unnecessarily.
-
-UI / UX
-
-Use a modern professional SaaS dashboard aesthetic.
-
-Requirements:
-
-Clean typography
-
-Consistent spacing
-
-Responsive layout
-
-Sidebar navigation for authenticated users
-
-Clear buttons and forms
-
-Loading states
-
-Empty states
-
-Error states
-
-Confirmation before destructive actions
-
-Accessible form controls
-
-Professional visual hierarchy
-
-Avoid excessive animations, gradients, or unnecessary visual effects.
-
-Technical Requirements
-
-Use a modern full-stack architecture supported by Lovable.
-
-Keep components modular and reusable.
-
-Separate UI components, business logic, and data-access logic where appropriate.
-
-Use environment variables for secrets and configuration.
-
-Do not hardcode user data or project data.
-
-Implement proper authentication and authorization.
-
-A user must not be able to access or modify projects they do not have permission to access.
-
-Important
-
-Do NOT implement these features yet:
-
-Real-time collaboration
-
-Live presence
-
-Comments
-
-Notifications
-
-Activity feed
-
-Advanced analytics
-
-Chat
-
-Email notifications
-
-We will implement these incrementally after the core application is working.
-
-Before making major architectural decisions, prioritize maintainability and simplicity.
-
-The final result of this first stage should be a working foundation for Sprint Board that we can test and extend feature-by-feature.
-
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/b8832a13-3097-4af4-9496-64aa7369cb5a).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+```bash
 npm run dev
 ```
+
+Open the local URL shown in your terminal.
+
+## Database
+
+The application uses Supabase for:
+
+* Authentication
+* PostgreSQL database
+* Row Level Security
+* Real-time subscriptions
+* Project and member management
+* Tasks and comments
+* Notifications
+
+Database schema changes are managed through the migration files inside:
+
+```text
+supabase/migrations
+```
+
+## Key Learning Areas
+
+This project was built to explore and practice:
+
+* Full-stack application development
+* Type-safe React development with TypeScript
+* Authentication and authorization
+* Relational database design
+* Row Level Security
+* Real-time application features
+* State management with TanStack Query
+* Drag-and-drop interactions
+* Collaborative application design
+
+## Future Improvements
+
+Potential future enhancements include:
+
+* Activity history
+* File attachments
+* Advanced filtering and search
+* Task labels
+* Email notifications
+* Team analytics
+* Project activity feed
+* Mobile-specific optimizations
+
+## Author
+
+Built and maintained by **Ananya Nityanand**.
