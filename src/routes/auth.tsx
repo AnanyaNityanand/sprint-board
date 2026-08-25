@@ -257,7 +257,7 @@ function SignUpForm({ onNeedsConfirmation }: { onNeedsConfirmation: () => void }
           email: values.email,
           password: values.password,
           options: {
-            emailRedirectTo: window.location.origin,
+            
             data: { full_name: values.fullName },
           },
         });
